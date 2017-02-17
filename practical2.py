@@ -16,7 +16,9 @@ import data
 ted = data.ted(FLAGS.vocab_size)
 embedding = data.glove(FLAGS.embedding_dim)
 
-vocab_vectors = np.array([embedding.get(word, np.zeros(FLAGS.embedding_dim)) for word in ted['vocab']])
+vocab_vectors = np.empty([FLAGS.vocab_size, FLAGS.embedding_dim])
+for word, index in ted['vocab'].items():
+  vocab_vectors[index] = embedding.get(word, np.zeros(FLAGS.embedding_dim))
 
 def weight_variable(shape):
   initial = tf.truncated_normal(shape, stddev=0.1)
@@ -129,29 +131,16 @@ with tf.Session() as sess:
       x_batch = x_shuffled[i*FLAGS.batch_size : (i+1)*FLAGS.batch_size]
       y_batch = y_shuffled[i*FLAGS.batch_size : (i+1)*FLAGS.batch_size]
 
-      if step % 10 == 0:  # Record summaries and validation-set accuracy
+      if step % 10 == 0:
           feed_dict = {x: x_validation, y: y_validation, keep_prob: 1.0}
           summary, acc = sess.run([merged, accuracy], feed_dict=feed_dict)
           validation_writer.add_summary(summary, step)
           print('Accuracy at step %s: %s' % (step, acc))
 
-      else:  # Record train set summaries, and train
+      else:
           feed_dict = {x: x_batch, y: y_batch, keep_prob: FLAGS.dropout}
-
-          if step % 100 == 99:  # Record execution stats
-              run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-              run_metadata = tf.RunMetadata()
-              summary, _ = sess.run([merged, train_step],
-                                feed_dict=feed_dict,
-                                options=run_options,
-                                run_metadata=run_metadata)
-              train_writer.add_run_metadata(run_metadata, 'step%03d' % step)
-              train_writer.add_summary(summary, step)
-
-          else:  # Record a summary
-              summary, _ = sess.run([merged, train_step], feed_dict=feed_dict)
-              train_writer.add_summary(summary, step)
-
+          summary, _ = sess.run([merged, train_step], feed_dict=feed_dict)
+          train_writer.add_summary(summary, step)
 
   x_test = ted['documents'][1835:]
   y_test = ted['categories'][1835:]
