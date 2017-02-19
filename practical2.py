@@ -8,7 +8,7 @@ flags.DEFINE_integer('vocab_size', 1000, 'Size of vocabulary derived from text c
 flags.DEFINE_integer('embedding_dim', 50, 'Dimension of embedding vectors')
 flags.DEFINE_string('embedding_type', 'learnable', 'Either fixed, random, or learnable')
 flags.DEFINE_integer('batch_size', 50, 'Training batch size')
-flags.DEFINE_integer('hidden_layer_size', 20, 'Size of the hidden layer')
+flags.DEFINE_integer('hidden_layer_size', 100, 'Size of the hidden layer')
 flags.DEFINE_float('dropout', 0.9, 'Keep probability for training dropout.')
 flags.DEFINE_string('summaries_dir', 'logs', 'Summaries directory')
 
@@ -39,7 +39,7 @@ def variable_summaries(var):
     tf.summary.scalar('min', tf.reduce_min(var))
     tf.summary.histogram('histogram', var)
 
-def nn_layer(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.relu):
+def nn_layer(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.tanh):
   with tf.name_scope(layer_name):
     with tf.name_scope('weights'):
       weights = weight_variable([input_dim, output_dim])
