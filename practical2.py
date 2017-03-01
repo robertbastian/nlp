@@ -12,12 +12,12 @@ flags.DEFINE_integer('hidden_layer_size', 100, 'Size of the hidden layer')
 flags.DEFINE_float('dropout', 0.9, 'Keep probability for training dropout.')
 flags.DEFINE_string('summaries_dir', 'logs', 'Summaries directory')
 
-import data
-ted = data.ted(FLAGS.vocab_size)
-embedding = data.glove(FLAGS.embedding_dim)
+from data import TedDataWithLabels, Glove
+ted_data = TedDataWithLabels(FLAGS.vocab_size)
 
+embedding = Glove(FLAGS.embedding_dim)
 vocab_vectors = np.empty([FLAGS.vocab_size, FLAGS.embedding_dim])
-for word, index in ted['vocab'].items():
+for word, index in ted_data.vocabulary().items():
   vocab_vectors[index] = embedding.get(word, np.zeros(FLAGS.embedding_dim))
 
 def weight_variable(shape):
@@ -54,9 +54,6 @@ def nn_layer(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.tanh):
     tf.summary.histogram('activations', activations)
     return activations
 
-
-# DEFINE NETWORK
-
 with tf.name_scope('input'):
   x = tf.placeholder(tf.float32, [None, FLAGS.vocab_size], name='document')
   y = tf.placeholder(tf.int32, [None], 'label-int')
@@ -70,9 +67,8 @@ with tf.name_scope('embedding'):
     name='embedding-matrix')
 
   embedding_sum = tf.matmul(x, embedding)
-  doc_length = tf.expand_dims(tf.reduce_sum(x, 1), 1)
-  doc_length_nonzero = tf.maximum(doc_length, 1)
-  doc_embedding = tf.div(embedding_sum, doc_length_nonzero)
+  word_counts = tf.maximum(tf.reduce_sum(x, 1), 1)
+  doc_embedding = tf.div(embedding_sum, tf.expand_dims(word_counts, 1))
 
 hidden_layer = nn_layer(doc_embedding, FLAGS.embedding_dim, FLAGS.hidden_layer_size, 'hidden_layer')
 
@@ -113,26 +109,12 @@ with tf.Session() as sess:
 
   tf.global_variables_initializer().run()
 
-  x_train = np.copy(ted['documents'][:1585])
-  y_train = np.copy(ted['categories'][:1585])
+  step = 0
 
-  x_validation = ted['documents'][1585:1835]
-  y_validation = ted['categories'][1585:1835]
-
-
-  iters = 1585 // FLAGS.batch_size
-
-  from sklearn.utils import shuffle
-  for reps in range(80):
-    x_shuffled, y_shuffled = shuffle(x_train, y_train)
-    for i in range(iters):
-      step = reps*iters+i
-
-      x_batch = x_shuffled[i*FLAGS.batch_size : (i+1)*FLAGS.batch_size]
-      y_batch = y_shuffled[i*FLAGS.batch_size : (i+1)*FLAGS.batch_size]
-
+  for epoch in range(80):
+    for x_batch, y_batch in ted_data.training_batches(FLAGS.batch_size):
       if step % 10 == 0:
-          feed_dict = {x: x_validation, y: y_validation, keep_prob: 1.0}
+          feed_dict = {x: ted_data.x_valid, y: ted_data.y_valid, keep_prob: 1.0}
           summary, acc = sess.run([merged, accuracy], feed_dict=feed_dict)
           validation_writer.add_summary(summary, step)
           print('Accuracy at step %s: %s' % (step, acc))
@@ -141,11 +123,9 @@ with tf.Session() as sess:
           feed_dict = {x: x_batch, y: y_batch, keep_prob: FLAGS.dropout}
           summary, _ = sess.run([merged, train_step], feed_dict=feed_dict)
           train_writer.add_summary(summary, step)
+      step += 1
 
-  x_test = ted['documents'][1835:]
-  y_test = ted['categories'][1835:]
-
-  feed_dict = {x: x_test, y: y_test, keep_prob: 1.0}
+  feed_dict = {x: ted_data.x_test, y: ted_data.y_test, keep_prob: 1.0}
   summary, acc = sess.run([merged, accuracy], feed_dict=feed_dict)
   test_writer.add_summary(summary, step)
 
