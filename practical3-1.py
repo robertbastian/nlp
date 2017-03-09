@@ -107,8 +107,8 @@ with tf.Session() as sess:
         for offset in range(0, np.max(x_batch_l), 10):
           feed_dict = {X: x_batch[:,offset:offset+10], L: np.maximum(0,x_batch_l - offset),
                        Y: y_batch, initial_states: states, keep_prob: FLAGS.dropout}
-          states_r, ne, _ = sess.run([final_states_, non_empty, train_step], feed_dict=feed_dict)
-          states[np.where(ne)] = states_r
+          updated_states, ne, _ = sess.run([final_states_, non_empty, train_step], feed_dict=feed_dict)
+          states[np.where(ne)] = updated_states
         step += 1
 
         train_sum, train_acc = sess.run([merged, accuracy],
