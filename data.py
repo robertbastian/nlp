@@ -12,7 +12,7 @@ class TedData(object):
     with zipfile.ZipFile('ted_en-20160408.zip', 'r') as z:
       self.xml = lxml.etree.parse(z.open('ted_en-20160408.xml', 'r'))
 
-      self.string_documents = []
+      string_documents = []
       for raw_document in self.xml.xpath('//content/text()'):
         # Remove everything in parens
         no_parens = re.sub(r'\([^)]*\)', '', raw_document)
@@ -20,15 +20,18 @@ class TedData(object):
         merged_lines = re.sub(r'\n([^:]{,20}:)?', ' ', no_parens)
         # Lowercase, remove special chars
         ascii_ = re.sub(r'[^a-z0-9\'\s]+', '', merged_lines.lower())
-        self.string_documents.append(ascii_)
+        string_documents.append(ascii_)
+
+      self.permutation = np.random.permutation(len(string_documents))
+      string_documents = np.asarray(string_documents)[self.permutation]
 
       self.representation = CountVectorizer(stop_words='english',
         max_features=vocab_size-1, token_pattern='(?u)\\b\w+[\w\']*\\b')
-      self.representation.fit(self.string_documents[:1585])
+      self.representation.fit(string_documents[:1585])
 
       self.UNKNOWN = 0
       docs = [[self.representation.vocabulary_.get(word, self.UNKNOWN - 1) + 1
-          for word in doc.split()] for doc in self.string_documents]
+          for word in doc.split()] for doc in string_documents]
       self._x_train = np.copy(docs[:1585])
       self.x_valid, self.x_valid_l = self._toNumpy(docs[1585:1835])
       self.x_test, self.x_test_l = self._toNumpy(docs[1835:])
@@ -52,6 +55,7 @@ class TedDataWithLabels(TedData):
       (4 if "design" in raw_category else 0)
       for raw_category in self.xml.xpath('//keywords/text()')]
     del self.xml
+    labels = np.asarray(labels)[self.permutation]
     self._y_train = np.copy(labels[:1585])
     self.y_valid = labels[1585:1835]
     self.y_test = labels[1835:]
