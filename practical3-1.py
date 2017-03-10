@@ -118,7 +118,7 @@ with tf.Session() as sess:
         valid_summary, valid_acc = sess.run([merged, accuracy], feed_dict=feed_dict_valid)
         validation_writer.add_summary(valid_summary, step)
 
-        print('Accuracy at Epoch {:d}.{:02d}: {:2.2f}% - {:2.2f}%'.format(epoch+1, batch+1, train_acc*100, valid_acc*100))
+        print('Accuracy at Epoch {:d}.{:02d}: {:02.2f}% - {:02.2f}%'.format(epoch+1, batch+1, train_acc*100, valid_acc*100))
 
     raise KeyboardInterrupt
 
